@@ -1,0 +1,3 @@
+cargo watch -q -c -w src/ -x run
+
+https://codevoweb.com/build-a-crud-api-http-server-in-rust/#comment-11827
