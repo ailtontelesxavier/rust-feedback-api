@@ -7,10 +7,10 @@ pub struct FilterOptions {
     pub limit: Option<usize>,
 }
 
-#[derive(Deserialize, Debug)]
-pub struct ParamOptions {
-    pub id: String,
-}
+//#[derive(Deserialize, Debug)]
+//pub struct ParamOptions {
+//    pub id: String,
+//}
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct CreateFeedbackSchema {

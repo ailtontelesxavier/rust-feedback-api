@@ -1,15 +1,25 @@
+mod handler;
+mod model;
+mod route;
+mod schema;
+
+
 use std::sync::Arc;
 
-use axum::{response::IntoResponse, routing::get, Json, Router};
-use dotenv::dotenv;
-
-use sqlx::{
-    postgres::PgPoolOptions,
-    Pool, Postgres,
+use axum::http::{
+    header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE},
+    HeaderValue, Method,
 };
+use dotenv::dotenv;
+use route::create_router;
+use tower_http::cors::CorsLayer;
 
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-use tower_http::trace::TraceLayer;
+use sqlx::{postgres::PgPoolOptions, Pool, Postgres};
+
+use tracing_subscriber;
+//use tower_http::trace::TraceLayer;
+use tower_http::trace::{TraceLayer};
+use tracing::{Level};
 
 
 pub struct AppState {
@@ -18,45 +28,35 @@ pub struct AppState {
 
 #[tokio::main]
 async fn main() {
-    dotenv().ok(); // Carrega as variáveis de ambiente do arquivo .env
+    dotenv().ok();
 
     let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    let pool = match PgPoolOptions::new()
+    let pool = PgPoolOptions::new()
         .max_connections(10)
         .connect(&database_url)
         .await
-    {
-        Ok(pool) => {
-            println!("✅Connection to the database is successful!");
-            pool
-        }
-        Err(err) => {
-            println!("🔥 Failed to connect to the database: {:?}", err);
-            std::process::exit(1);
-        }
-    };
-    // Inicializa o subscriber de logs
-    tracing_subscriber::registry()
-        .with(tracing_subscriber::fmt::layer())
-        .with(tracing_subscriber::EnvFilter::new("tower_http=debug,info"))
+        .expect("🔥 Failed to connect to the database");
+
+    // Inicializa o subscriber com base no RUST_LOG
+    tracing_subscriber::fmt()
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .init();
 
-    let app = Router::new().route("/api/healthchecker", get(health_checker_handler))
-    .layer(TraceLayer::new_for_http()); // Middleware de log;
-    
-    println!("Server started successfully");
+    let cors = CorsLayer::new()
+        .allow_origin("http://localhost:3000".parse::<HeaderValue>().unwrap())
+        .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::DELETE])
+        .allow_credentials(true)
+        .allow_headers([AUTHORIZATION, ACCEPT, CONTENT_TYPE]);
+
+    let app = create_router(Arc::new(AppState { db: pool }))
+        .layer(cors)
+        .layer(
+            TraceLayer::new_for_http()
+                .make_span_with(tower_http::trace::DefaultMakeSpan::new().level(Level::INFO))
+                .on_response(tower_http::trace::DefaultOnResponse::new().level(Level::INFO)),
+        );
+
+    println!("🚀 Server started successfully");
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8000").await.unwrap();
     axum::serve(listener, app).await.unwrap();
-}
-
-
-async fn health_checker_handler() -> impl IntoResponse {
-    const MESSAGE: &str = "Feedback CRUD API with Rust, SQLX, Postgres and Axum";
-
-    let json_response = serde_json::json!({
-        "status": "success",
-        "message": MESSAGE
-    });
-    
-    Json(json_response)
 }
