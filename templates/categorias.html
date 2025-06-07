@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Categorias</title>
+</head>
+<body>
+  <h1>Lista de Categorias</h1>
+  <ul>
+    {% for categoria in categorias %}
+      <li>{{ categoria.id }} - {{ categoria.nome }}</li>
+    {% endfor %}
+  </ul>
+
+  <h2>Adicionar Categoria</h2>
+  <form method="post" action="/categorias">
+    <input type="text" name="nome" placeholder="Nome da categoria" required />
+    <button type="submit">Adicionar</button>
+  </form>
+</body>
+</html>

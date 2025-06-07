@@ -7,6 +7,7 @@ edition = "2024"
 axum = "0.8.4"
 chrono = { version = "0.4.41", features = ["serde"] }
 dotenv = "0.15.0"
+minijinja = { version = "2.10.2", features = ["loader"] }
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"
 sqlx = { version = "0.8.6", features = ["runtime-async-std-native-tls", "postgres", "chrono", "uuid"] }

@@ -10,6 +10,9 @@ use axum::http::{
     header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE},
     HeaderValue, Method,
 };
+
+use axum::{Extension};
+use minijinja::{path_loader, Environment};
 use dotenv::dotenv;
 use route::create_router;
 use tower_http::cors::CorsLayer;
@@ -42,6 +45,13 @@ async fn main() {
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .init();
 
+    // Carrega os arquivos da pasta ./templates/
+    let mut env = Environment::new();
+    env.set_loader(path_loader("templates"));
+
+    // Compartilhado entre threads com Arc
+    let env = Arc::new(env);
+
     let cors = CorsLayer::new()
         .allow_origin("http://localhost:3000".parse::<HeaderValue>().unwrap())
         .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::DELETE])
@@ -50,6 +60,8 @@ async fn main() {
 
     let app = create_router(Arc::new(AppState { db: pool }))
         .layer(cors)
+        .layer(Extension(env))
+        // Adiciona o TraceLayer para rastreamento de requisições HTTP
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(tower_http::trace::DefaultMakeSpan::new().level(Level::INFO))
